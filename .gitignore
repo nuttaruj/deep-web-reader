@@ -9,3 +9,4 @@ Requirement.md
 test_*
 debug_*
 CHANGE-SUMMARY.md
+test_*.py
