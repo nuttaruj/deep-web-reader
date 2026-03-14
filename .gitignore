@@ -1,0 +1,10 @@
+__pycache__/
+.env
+*.log
+*.txt
+programmer/
+qa/
+reports/
+Requirement.md
+test_*
+debug_*
