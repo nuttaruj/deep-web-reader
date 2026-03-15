@@ -258,4 +258,4 @@ MIT License - See LICENSE file for details.
 ---
 
 **Created with ❤️ by nuttaruj**  
-*Making web scraping accessible for OpenClaw agents worldwide*
+*Making web scraping accessible for OpenClaw agents worldwide* 
