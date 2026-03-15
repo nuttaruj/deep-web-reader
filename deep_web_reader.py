@@ -423,67 +423,7 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
 
 # ===================== MAIN FUNCTION =====================
 
-def extract_linkedin_jobs(html):
-    """
-    Extract job listings from LinkedIn search results HTML
-    """
-    try:
-        import re
-        
-        jobs = []
-        
-        # Extract titles
-        titles = re.findall(r'class="[^"]*(?:base-search-card__title|job-card-list__title|job-card-title|job-title)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
-        
-        # Extract companies
-        companies = re.findall(r'class="[^"]*(?:base-search-card__subtitle|job-card-container__company-name|job-card-company-name|company-name)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
-        
-        # Extract times
-        times = re.findall(r'class="[^"]*(?:job-search-card__listdate|job-card-container__listed-time|posted-time-ago|listed-time)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
-        
-        # Find links
-        link_pattern = r'href="([^"]*(?:/jobs/view/|/jobs/)[^"]*)"'
-        raw_links = re.findall(link_pattern, html)
-        
-        # Remove duplicates preserving order
-        unique_links = []
-        seen = set()
-        for link in raw_links:
-            if link not in seen:
-                seen.add(link)
-                if link.startswith('/'):
-                    link = f"https://www.linkedin.com{link}"
-                unique_links.append(link)
-                
-        # Pair them up
-        max_items = min(15, len(unique_links))
-        for i in range(max_items):
-            title = titles[i] if i < len(titles) else "Unknown Title"
-            company = companies[i] if i < len(companies) else "Unknown Company"
-            time = times[i] if i < len(times) else "Unknown Time"
-            link = unique_links[i]
-            
-            # Avoid adding empty jobs
-            if title == "Unknown Title" and company == "Unknown Company":
-                continue
-                
-            jobs.append({
-                'title': title,
-                'company': company,
-                'time': time,
-                'link': link
-            })
-        
-        # Format the results
-        formatted_jobs = []
-        for job in jobs:
-            formatted = f"🏢 {job['company']}\n📍 {job['title']}\n🕒 {job['time']}\n🔗 {job['link']}\n"
-            formatted_jobs.append(formatted)
-        
-        return "\n".join(formatted_jobs) if formatted_jobs else "No job listings found"
-    
-    except Exception as e:
-        return f"Error extracting LinkedIn jobs: {str(e)}"
+
 
 
 def deep_web_read(url, clean_html=True, wait_for=5000):
@@ -507,12 +447,7 @@ def deep_web_read(url, clean_html=True, wait_for=5000):
         print(f"[ERROR] Failed to fetch {url}: {result.get('error', 'Unknown error')}")
         return result
     
-    # Extract LinkedIn jobs if URL is LinkedIn job search
-    if 'linkedin.com' in url.lower() and ('/jobs/' in url.lower() or 'job' in url.lower()):
-        if result.get("html"):
-            linkedin_jobs = extract_linkedin_jobs(result["html"])
-            result["linkedin_jobs"] = linkedin_jobs
-            print(f"[INFO] Extracted {len(linkedin_jobs.split('🏢')) - 1 if '🏢' in linkedin_jobs else 0} LinkedIn job listings")
+    
     
     # Clean HTML if requested
     if clean_html and result.get("html"):
