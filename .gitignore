@@ -1,12 +1,12 @@
 __pycache__/
 .env
 *.log
-*.txt
+test_*.py
+debag_*
+
+# Project specific
 programmer/
 qa/
 reports/
 Requirement.md
-test_*
-debug_*
 CHANGE-SUMMARY.md
-test_*.py

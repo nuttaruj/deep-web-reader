@@ -273,3 +273,29 @@ def deep_web_read(url, clean_html=True, wait_for=5000):
     return result
 
 # ===================== END OF MAIN CODE =====================
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage: python3 deep_web_reader.py <URL>")
+        print("\nOptions:")
+        print("  <URL>    Target website URL")
+        sys.exit(1)
+    
+    url = sys.argv[1]
+    result = deep_web_read(url)
+    
+    if result.get('success'):
+        print("\n" + "="*60)
+        print(f"Successfully fetched: {url}")
+        print(f"Original HTML size: {result.get('original_html_length', 0):,} characters")
+        print(f"Cleaned text size: {result.get('content_length', 0):,} characters")
+        print("="*60)
+        print("\nCleaned text preview (first 1000 chars):\n")
+        print(result.get('cleaned_text', '')[:1000])
+        if result.get('content_length', 0) > 1000:
+            print(f"\n[... and {result.get('content_length', 0) - 1000:,} more characters]")
+    else:
+        print(f"\nERROR: {result.get('error')}")
+        sys.exit(1)
