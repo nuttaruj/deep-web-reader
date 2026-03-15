@@ -151,11 +151,11 @@ def fetch_with_browserless(url, wait_for=5000, timeout=30000):
             "status": "unknown_error"
         }
 
-# ===================== HTML CLEANING =====================
+# ===================== HTML TO MARKDOWN CONVERSION =====================
 
-def clean_html_to_text(html_content, remove_scripts=True, remove_styles=True):
+def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True):
     """
-    Convert HTML to clean text using HTMLParser (standard library)
+    Convert HTML to clean Markdown using HTMLParser (standard library)
     
     Args:
         html_content (str): Raw HTML content
@@ -163,56 +163,246 @@ def clean_html_to_text(html_content, remove_scripts=True, remove_styles=True):
         remove_styles (bool): Remove <style> tags
     
     Returns:
-        str: Cleaned text content
+        str: Cleaned Markdown content
     """
     if not html_content:
         return ""
     
     try:
-        # Use HTMLParser for more robust parsing
         from html.parser import HTMLParser
         from html import unescape
         
-        class TextExtractor(HTMLParser):
+        class MarkdownExtractor(HTMLParser):
             def __init__(self, remove_scripts, remove_styles):
                 super().__init__()
-                self.text_parts = []
+                self.output = []
                 self.ignore = False
                 self.remove_scripts = remove_scripts
                 self.remove_styles = remove_styles
+                self.tag_stack = []
+                self.list_stack = []  # Track list nesting: ('ul', depth) or ('ol', depth)
+                self.list_item_counters = []  # Separate counters for each nested list
+                self.in_pre = False
+                self.in_code = False
+                self.in_anchor = False
+                self.current_href = ''
+                self.last_char = ''  # Track last character for spacing
+                self.pre_language = ''  # Store language for code blocks
+            
+            def _needs_space_before(self):
+                """Return True if we need a space before inline content"""
+                if not self.output:
+                    return False
+                last = self.output[-1]
+                if not last:
+                    return False
+                last_char = last[-1] if last else ''
+                # Need space if last character is alphanumeric (word character)
+                # but not if it's already a space, newline, or markdown formatting char
+                if last_char in (' ', '\n', '[', '(', '*', '`', '#', '-', '.', ',', ';', ':', '?', '!', ')', ']', '}', '>'):
+                    return False
+                # Also check if last two chars are '**' or '`' (but we only have last char)
+                # For simplicity, if last char is markdown formatting, no space
+                return last_char.isalnum()
+            
+            def _add_space_if_needed(self):
+                """Add a space if needed before inline content"""
+                if self._needs_space_before():
+                    self.output.append(' ')
             
             def handle_starttag(self, tag, attrs):
                 tag_lower = tag.lower()
+                
+                # Ignore script and style tags if requested
                 if (self.remove_scripts and tag_lower == 'script') or \
                    (self.remove_styles and tag_lower == 'style'):
                     self.ignore = True
+                    return
+                
+                self.tag_stack.append(tag_lower)
+                
+                if tag_lower in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                    level = int(tag_lower[1])
+                    self.output.append('\n' + '#' * level + ' ')
+                elif tag_lower == 'a':
+                    self.in_anchor = True
+                    self.current_href = ''
+                    for attr, val in attrs:
+                        if attr.lower() == 'href':
+                            self.current_href = val
+                            break
+                    self._add_space_if_needed()
+                    self.output.append('[')
+                elif tag_lower == 'ul':
+                    depth = len([l for l in self.list_stack if l[0] == 'ul' or l[0] == 'ol'])
+                    self.list_stack.append(('ul', depth))
+                    self.list_item_counters.append(0)
+                    # Add newline before new list if needed
+                    if self.output and not self.output[-1].endswith('\n'):
+                        self.output.append('\n')
+                elif tag_lower == 'ol':
+                    depth = len([l for l in self.list_stack if l[0] == 'ul' or l[0] == 'ol'])
+                    self.list_stack.append(('ol', depth))
+                    self.list_item_counters.append(0)
+                    if self.output and not self.output[-1].endswith('\n'):
+                        self.output.append('\n')
+                elif tag_lower == 'li':
+                    if self.list_stack:
+                        list_type, depth = self.list_stack[-1]
+                        counter_index = len(self.list_stack) - 1
+                        self.list_item_counters[counter_index] += 1
+                        counter = self.list_item_counters[counter_index]
+                        
+                        # Determine indentation
+                        indent = '  ' * depth
+                        if list_type == 'ul':
+                            self.output.append(f'\n{indent}- ')
+                        else:  # 'ol'
+                            self.output.append(f'\n{indent}{counter}. ')
+                    else:
+                        self.output.append('\n- ')
+                elif tag_lower == 'pre':
+                    self.in_pre = True
+                    # Ensure we're on a new line
+                    if self.output and not self.output[-1].endswith('\n'):
+                        self.output.append('\n')
+                    self.output.append('```\n')
+                elif tag_lower == 'code':
+                    if not self.in_pre:
+                        self.in_code = True
+                        self._add_space_if_needed()
+                        self.output.append('`')
+                elif tag_lower in ['strong', 'b']:
+                    self._add_space_if_needed()
+                    self.output.append('**')
+                elif tag_lower in ['em', 'i']:
+                    self._add_space_if_needed()
+                    self.output.append('*')
+                elif tag_lower == 'p':
+                    # Add newline before paragraph if needed
+                    if self.output and not self.output[-1].endswith('\n\n'):
+                        if not self.output[-1].endswith('\n'):
+                            self.output.append('\n')
+                        self.output.append('\n')
+                elif tag_lower == 'br':
+                    self.output.append('\n')
+                elif tag_lower == 'hr':
+                    self.output.append('\n---\n')
+                elif tag_lower == 'div':
+                    # Add newline for block-level div
+                    if self.output and not self.output[-1].endswith('\n'):
+                        self.output.append('\n')
             
             def handle_endtag(self, tag):
                 tag_lower = tag.lower()
-                if (self.remove_scripts and tag_lower == 'script') or \
-                   (self.remove_styles and tag_lower == 'style'):
-                    self.ignore = False
+                
+                if self.ignore:
+                    if (self.remove_scripts and tag_lower == 'script') or \
+                       (self.remove_styles and tag_lower == 'style'):
+                        self.ignore = False
+                    return
+                
+                if self.tag_stack and self.tag_stack[-1] == tag_lower:
+                    self.tag_stack.pop()
+                
+                if tag_lower in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                    self.output.append('\n')
+                elif tag_lower == 'a':
+                    if self.in_anchor:
+                        self.in_anchor = False
+                        href = self.current_href if self.current_href else '#'
+                        self.output.append(f']({href})')
+                elif tag_lower == 'ul':
+                    if self.list_stack and self.list_stack[-1][0] == 'ul':
+                        self.list_stack.pop()
+                        self.list_item_counters.pop()
+                    self.output.append('\n')
+                elif tag_lower == 'ol':
+                    if self.list_stack and self.list_stack[-1][0] == 'ol':
+                        self.list_stack.pop()
+                        self.list_item_counters.pop()
+                    self.output.append('\n')
+                elif tag_lower == 'li':
+                    # Nothing special needed
+                    pass
+                elif tag_lower == 'pre':
+                    self.in_pre = False
+                    self.output.append('\n```\n')
+                elif tag_lower == 'code':
+                    if not self.in_pre and self.in_code:
+                        self.in_code = False
+                        self.output.append('`')
+                elif tag_lower in ['strong', 'b']:
+                    self.output.append('**')
+                elif tag_lower in ['em', 'i']:
+                    self.output.append('*')
+                elif tag_lower == 'p':
+                    self.output.append('\n')
+                elif tag_lower == 'div':
+                    self.output.append('\n')
             
             def handle_data(self, data):
-                if not self.ignore:
-                    self.text_parts.append(data)
+                if self.ignore:
+                    return
+                
+                # Preserve whitespace in pre/code blocks
+                if self.in_pre or self.in_code:
+                    self.output.append(data)
+                    return
+                
+                # Normalize whitespace outside code blocks
+                if not data.strip():
+                    # If it's just whitespace, add a single space if needed
+                    if self.output and self.output[-1] and self.output[-1][-1] not in (' ', '\n'):
+                        self.output.append(' ')
+                    return
+                
+                # Clean up multiple spaces within text
+                cleaned = ' '.join(data.split())
+                
+                # Add space before if original data has leading space
+                if self.output and self.output[-1] and self.output[-1][-1] not in (' ', '\n'):
+                    if data[0].isspace() or self._needs_space_before():
+                        self.output.append(' ')
+                
+                self.output.append(cleaned)
+                
+                # Add trailing space if original data has trailing space
+                if data[-1].isspace():
+                    self.output.append(' ')
             
-            def get_text(self):
-                return ' '.join(self.text_parts)
+            def get_markdown(self):
+                # Join all parts
+                result = ''.join(self.output)
+                
+                # Clean up multiple blank lines (more than 2 consecutive newlines)
+                import re
+                result = re.sub(r'\n\s*\n\s*\n+', '\n\n', result)
+                
+                # Fix any double spaces
+                result = re.sub(r'[ \t]+', ' ', result)
+                
+                # Remove leading/trailing whitespace on each line
+                lines = result.split('\n')
+                lines = [line.rstrip() for line in lines]  # Only strip trailing spaces
+                result = '\n'.join(lines)
+                
+                # Remove multiple empty lines again
+                result = re.sub(r'\n\s*\n\s*\n+', '\n\n', result)
+                
+                # Final trim
+                return result.strip()
         
         # Decode HTML entities first
         content = unescape(html_content)
-        parser = TextExtractor(remove_scripts, remove_styles)
+        parser = MarkdownExtractor(remove_scripts, remove_styles)
         parser.feed(content)
-        text = parser.get_text()
+        markdown = parser.get_markdown()
         
-        # Clean up whitespace
-        import re
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
+        return markdown
         
-    except Exception:
-        # Fallback to regex method if parser fails
+    except Exception as e:
+        # Fallback to basic text extraction if parser fails
         import re
         from html import unescape
         
@@ -232,6 +422,69 @@ def clean_html_to_text(html_content, remove_scripts=True, remove_styles=True):
         return content
 
 # ===================== MAIN FUNCTION =====================
+
+def extract_linkedin_jobs(html):
+    """
+    Extract job listings from LinkedIn search results HTML
+    """
+    try:
+        import re
+        
+        jobs = []
+        
+        # Extract titles
+        titles = re.findall(r'class="[^"]*(?:base-search-card__title|job-card-list__title|job-card-title|job-title)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
+        
+        # Extract companies
+        companies = re.findall(r'class="[^"]*(?:base-search-card__subtitle|job-card-container__company-name|job-card-company-name|company-name)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
+        
+        # Extract times
+        times = re.findall(r'class="[^"]*(?:job-search-card__listdate|job-card-container__listed-time|posted-time-ago|listed-time)[^"]*"[^>]*>\s*([^<]+?)\s*</', html)
+        
+        # Find links
+        link_pattern = r'href="([^"]*(?:/jobs/view/|/jobs/)[^"]*)"'
+        raw_links = re.findall(link_pattern, html)
+        
+        # Remove duplicates preserving order
+        unique_links = []
+        seen = set()
+        for link in raw_links:
+            if link not in seen:
+                seen.add(link)
+                if link.startswith('/'):
+                    link = f"https://www.linkedin.com{link}"
+                unique_links.append(link)
+                
+        # Pair them up
+        max_items = min(15, len(unique_links))
+        for i in range(max_items):
+            title = titles[i] if i < len(titles) else "Unknown Title"
+            company = companies[i] if i < len(companies) else "Unknown Company"
+            time = times[i] if i < len(times) else "Unknown Time"
+            link = unique_links[i]
+            
+            # Avoid adding empty jobs
+            if title == "Unknown Title" and company == "Unknown Company":
+                continue
+                
+            jobs.append({
+                'title': title,
+                'company': company,
+                'time': time,
+                'link': link
+            })
+        
+        # Format the results
+        formatted_jobs = []
+        for job in jobs:
+            formatted = f"🏢 {job['company']}\n📍 {job['title']}\n🕒 {job['time']}\n🔗 {job['link']}\n"
+            formatted_jobs.append(formatted)
+        
+        return "\n".join(formatted_jobs) if formatted_jobs else "No job listings found"
+    
+    except Exception as e:
+        return f"Error extracting LinkedIn jobs: {str(e)}"
+
 
 def deep_web_read(url, clean_html=True, wait_for=5000):
     """
@@ -254,16 +507,23 @@ def deep_web_read(url, clean_html=True, wait_for=5000):
         print(f"[ERROR] Failed to fetch {url}: {result.get('error', 'Unknown error')}")
         return result
     
+    # Extract LinkedIn jobs if URL is LinkedIn job search
+    if 'linkedin.com' in url.lower() and ('/jobs/' in url.lower() or 'job' in url.lower()):
+        if result.get("html"):
+            linkedin_jobs = extract_linkedin_jobs(result["html"])
+            result["linkedin_jobs"] = linkedin_jobs
+            print(f"[INFO] Extracted {len(linkedin_jobs.split('🏢')) - 1 if '🏢' in linkedin_jobs else 0} LinkedIn job listings")
+    
     # Clean HTML if requested
     if clean_html and result.get("html"):
-        cleaned_text = clean_html_to_text(result["html"])
-        result["cleaned_text"] = cleaned_text
-        result["content_length"] = len(cleaned_text)
+        markdown = clean_html_to_markdown(result["html"])
+        result["markdown"] = markdown
+        result["content_length"] = len(markdown)
         
         # Also keep original HTML for reference
         result["original_html_length"] = len(result["html"])
     else:
-        result["cleaned_text"] = ""
+        result["markdown"] = ""
         result["content_length"] = 0
         result["original_html_length"] = len(result.get("html", ""))
     
@@ -290,10 +550,10 @@ if __name__ == "__main__":
         print("\n" + "="*60)
         print(f"Successfully fetched: {url}")
         print(f"Original HTML size: {result.get('original_html_length', 0):,} characters")
-        print(f"Cleaned text size: {result.get('content_length', 0):,} characters")
+        print(f"Markdown size: {result.get('content_length', 0):,} characters")
         print("="*60)
-        print("\nCleaned text preview (first 1000 chars):\n")
-        print(result.get('cleaned_text', '')[:1000])
+        print("\nMarkdown preview (first 1000 chars):\n")
+        print(result.get('markdown', '')[:1000])
         if result.get('content_length', 0) > 1000:
             print(f"\n[... and {result.get('content_length', 0) - 1000:,} more characters]")
     else:
