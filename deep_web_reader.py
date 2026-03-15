@@ -153,7 +153,7 @@ def fetch_with_browserless(url, wait_for=5000, timeout=30000):
 
 # ===================== HTML TO MARKDOWN CONVERSION =====================
 
-def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True):
+def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True, tags_to_remove=None):
     """
     Convert HTML to clean Markdown using HTMLParser (standard library)
     
@@ -161,6 +161,7 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
         html_content (str): Raw HTML content
         remove_scripts (bool): Remove <script> tags
         remove_styles (bool): Remove <style> tags
+        tags_to_remove (list): List of additional tag names to remove (e.g., ['nav', 'footer', 'noscript'])
     
     Returns:
         str: Cleaned Markdown content
@@ -168,17 +169,25 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
     if not html_content:
         return ""
     
+    # Default tags to remove based on parameters
+    tags_to_remove = tags_to_remove or []
+    if remove_scripts:
+        if 'script' not in tags_to_remove:
+            tags_to_remove.append('script')
+    if remove_styles:
+        if 'style' not in tags_to_remove:
+            tags_to_remove.append('style')
+    
     try:
         from html.parser import HTMLParser
         from html import unescape
         
         class MarkdownExtractor(HTMLParser):
-            def __init__(self, remove_scripts, remove_styles):
+            def __init__(self, tags_to_remove):
                 super().__init__()
                 self.output = []
                 self.ignore = False
-                self.remove_scripts = remove_scripts
-                self.remove_styles = remove_styles
+                self.tags_to_remove = tags_to_remove
                 self.tag_stack = []
                 self.list_stack = []  # Track list nesting: ('ul', depth) or ('ol', depth)
                 self.list_item_counters = []  # Separate counters for each nested list
@@ -213,9 +222,8 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
             def handle_starttag(self, tag, attrs):
                 tag_lower = tag.lower()
                 
-                # Ignore script and style tags if requested
-                if (self.remove_scripts and tag_lower == 'script') or \
-                   (self.remove_styles and tag_lower == 'style'):
+                # Ignore tags in the removal list
+                if tag_lower in self.tags_to_remove:
                     self.ignore = True
                     return
                 
@@ -297,8 +305,7 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
                 tag_lower = tag.lower()
                 
                 if self.ignore:
-                    if (self.remove_scripts and tag_lower == 'script') or \
-                       (self.remove_styles and tag_lower == 'style'):
+                    if tag_lower in self.tags_to_remove:
                         self.ignore = False
                     return
                 
@@ -395,7 +402,7 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
         
         # Decode HTML entities first
         content = unescape(html_content)
-        parser = MarkdownExtractor(remove_scripts, remove_styles)
+        parser = MarkdownExtractor(tags_to_remove)
         parser.feed(content)
         markdown = parser.get_markdown()
         
@@ -408,11 +415,10 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
         
         content = html_content
         
-        if remove_scripts:
-            content = re.sub(r'<script\b[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
-        
-        if remove_styles:
-            content = re.sub(r'<style\b[^>]*>.*?</style>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        # Remove all tags in tags_to_remove
+        for tag in tags_to_remove:
+            pattern = rf'<{tag}\b[^>]*>.*?</{tag}>'
+            content = re.sub(pattern, '', content, flags=re.DOTALL | re.IGNORECASE)
         
         content = re.sub(r'<!--.*?-->', '', content, flags=re.DOTALL)
         content = re.sub(r'<[^>]+>', ' ', content)
@@ -426,7 +432,7 @@ def clean_html_to_markdown(html_content, remove_scripts=True, remove_styles=True
 
 
 
-def deep_web_read(url, clean_html=True, wait_for=5000):
+def deep_web_read(url, clean_html=True, wait_for=5000, tags_to_remove=None):
     """
     Main function to fetch and optionally clean web content
     
@@ -434,6 +440,8 @@ def deep_web_read(url, clean_html=True, wait_for=5000):
         url (str): Target URL
         clean_html (bool): Whether to clean HTML to text
         wait_for (int): Milliseconds to wait for page load
+        tags_to_remove (list): List of HTML tags to remove during cleaning.
+            Default: ['script', 'style', 'nav', 'footer', 'noscript']
     
     Returns:
         dict: Result containing success status, content, and metadata
@@ -451,14 +459,17 @@ def deep_web_read(url, clean_html=True, wait_for=5000):
     
     # Clean HTML if requested
     if clean_html and result.get("html"):
-        markdown = clean_html_to_markdown(result["html"])
-        result["markdown"] = markdown
+        # Default tags to remove
+        if tags_to_remove is None:
+            tags_to_remove = ['script', 'style', 'nav', 'footer', 'noscript']
+        markdown = clean_html_to_markdown(result["html"], tags_to_remove=tags_to_remove)
+        result["markdown_text"] = markdown
         result["content_length"] = len(markdown)
         
         # Also keep original HTML for reference
         result["original_html_length"] = len(result["html"])
     else:
-        result["markdown"] = ""
+        result["markdown_text"] = ""
         result["content_length"] = 0
         result["original_html_length"] = len(result.get("html", ""))
     
@@ -487,10 +498,8 @@ if __name__ == "__main__":
         print(f"Original HTML size: {result.get('original_html_length', 0):,} characters")
         print(f"Markdown size: {result.get('content_length', 0):,} characters")
         print("="*60)
-        print("\nMarkdown preview (first 1000 chars):\n")
-        print(result.get('markdown', '')[:1000])
-        if result.get('content_length', 0) > 1000:
-            print(f"\n[... and {result.get('content_length', 0) - 1000:,} more characters]")
+        print("\nMarkdown content:\n")
+        print(result.get('markdown_text', ''))
     else:
         print(f"\nERROR: {result.get('error')}")
         sys.exit(1)
