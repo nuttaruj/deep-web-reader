@@ -9,6 +9,32 @@ metadata: { "openclaw": { "emoji": "🌐", "requires": { "bins": ["python3"] } }
 
 Zero-dependency web scraping tool using Browserless API. Created by **nuttaruj**.
 
+## Usage
+
+
+## Usage
+
+```bash
+python3 deep_web_reader.py <URL>
+```
+
+### Options
+
+- `<URL>`: Target website URL (required)
+- `--no-clean`: Skip HTML to Markdown conversion
+- `--wait <ms>`: Wait time for page load (default: 5000ms)
+- `--timeout <ms>`: Request timeout (default: 30000ms)
+
+### Environment Variables
+
+Set these before running:
+
+```bash
+export BROWSERLESS_HOST="http://your-browserless-server:32768"
+export BROWSERLESS_TOKEN="your-api-token"
+```
+
+
 ## 🎯 Purpose
 
 Fetch clean text content from websites (including JavaScript-rendered pages) using Browserless API with no external dependencies. Perfect for OpenClaw agents that need web content extraction without heavy browser automation.
@@ -185,7 +211,7 @@ Testing example website
     Content validation: ✓ Text extraction successful
 
 [6] Test completed successfully!
-    Ready for QA testing with example website by น้องเทส
+    Ready for QA testing with example website by User
 ============================================================
 Test block completed
 ============================================================
