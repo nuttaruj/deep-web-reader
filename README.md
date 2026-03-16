@@ -61,6 +61,12 @@ Extract clean Markdown from any webpage:
 python3 deep_web_reader.py https://example.com --mode text
 ```
 
+**Pretty print JSON output for human readability:**
+
+```bash
+python3 deep_web_reader.py https://example.com --mode text --pretty
+```
+
 ### Screenshot Mode
 
 Capture a full‑page screenshot:
@@ -89,6 +95,7 @@ python3 deep_web_reader.py https://example.com --mode pdf --pdf-format A4
 | `--output`, `-o` | Output file path (auto‑generated if omitted) | – |
 | `--stealth` | Enable stealth mode to bypass bot detection | `false` |
 | `--block‑ads` | Block ads and consent modals | `false` |
+| `--pretty` | Pretty print JSON output with indentation for human readability | `false` |
 
 ### Text‑Mode Options
 

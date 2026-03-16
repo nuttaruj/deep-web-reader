@@ -922,6 +922,12 @@ Environment Variables:
         help="Milliseconds to wait for page load before capture (default: 5000)",
     )
 
+    parser.add_argument(
+        "--pretty",
+        action="store_true",
+        help="Pretty print JSON output with indentation for human readability",
+    )
+
     args = parser.parse_args()
 
     # Execute based on mode
@@ -959,7 +965,10 @@ Environment Variables:
         )
     
     # AI-Friendly JSON Output: print JSON only, single line
-    print(json.dumps(result))
+    if args.pretty:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(json.dumps(result))
     
     # Exit with appropriate code
     sys.exit(0 if result.get("success") else 1)

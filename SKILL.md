@@ -85,6 +85,7 @@ python3 deep_web_reader.py <URL> [--mode <mode>] [options]
 | `--output`, `-o` | path | *auto‑generated* | Output file path |
 | `--stealth` | flag | `false` | Enable stealth mode (bypass bot detection) |
 | `--block‑ads` | flag | `false` | Block ads and consent modals |
+| `--pretty` | flag | `false` | Pretty print JSON output with indentation for human readability |
 
 ### Text‑Mode Specific
 
@@ -118,6 +119,12 @@ python3 deep_web_reader.py https://example.com --mode text --wait-for 5000
 ```
 
 **Output:** JSON with `markdown_text` field containing cleaned content.
+
+**Pretty print JSON output for human readability:**
+
+```bash
+python3 deep_web_reader.py https://example.com --mode text --pretty
+```
 
 ### Example 2: Capture Screenshot with Stealth
 
