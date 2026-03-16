@@ -28,19 +28,6 @@ import re
 from html import unescape
 from pathlib import Path
 
-# Try to import browserless-api library
-try:
-    from browserless_api import (
-        BrowserlessClient,
-        ScreenshotOptions,
-        PdfOptions,
-        LaunchParams,
-        Region,
-    )
-    BROWSERLESS_AVAILABLE = True
-except ImportError:
-    BROWSERLESS_AVAILABLE = False
-
 # ===================== CONFIGURATION =====================
 
 
@@ -69,28 +56,7 @@ def get_browserless_config():
     }
 
 
-def get_client():
-    """Create BrowserlessClient instance"""
-    if not BROWSERLESS_AVAILABLE:
-        raise ImportError(
-            "browserless-api library not found. Install with: pip install browserless-api"
-        )
 
-    config = get_browserless_config()
-
-    # Map region string to Region enum
-    region_map = {
-        "SFO_US": Region.SFO_US,
-        "LON_UK": Region.LON_UK,
-        "AMS_NL": Region.AMS_NL,
-    }
-    region = region_map.get(config["region"], Region.SFO_US)
-
-    return BrowserlessClient(
-        token=config["token"],
-        region=region,
-        timeout=120,
-    )
 
 
 # ===================== TEXT MODE (Existing functionality) =====================
@@ -520,13 +486,10 @@ def text_mode(url, wait_for=5000, tags_to_remove=None):
     Returns:
         dict: Result with markdown text and metadata
     """
-    print(f"[Deep Web Reader] Fetching (text mode): {url}")
-
     # Fetch content via Browserless
     result = fetch_with_browserless(url, wait_for=wait_for)
 
     if not result.get("success"):
-        print(f"[ERROR] Failed to fetch {url}: {result.get('error', 'Unknown error')}")
         return result
 
     # Clean HTML if requested
@@ -544,11 +507,6 @@ def text_mode(url, wait_for=5000, tags_to_remove=None):
         result["original_html_length"] = len(result.get("html", ""))
         result["mode"] = "text"
 
-    print(
-        f"[SUCCESS] Fetched {result.get('original_html_length', 0):,} chars, "
-        f"cleaned to {result.get('content_length', 0):,} chars"
-    )
-
     return result
 
 
@@ -562,6 +520,7 @@ def screenshot_mode(
     quality=80,
     stealth=False,
     block_ads=False,
+    wait_for=5000,
 ):
     """
     Screenshot mode: Capture screenshot of web page
@@ -574,58 +533,73 @@ def screenshot_mode(
         quality: JPEG/WebP quality (0-100)
         stealth: Enable stealth mode
         block_ads: Block ads and consent modals
+        wait_for: Milliseconds to wait for page load
 
     Returns:
         dict: Result with screenshot path and metadata
     """
-    print(f"[Deep Web Reader] Capturing screenshot: {url}")
-
-    if not BROWSERLESS_AVAILABLE:
-        return {
-            "success": False,
-            "error": "browserless-api library not found. Install with: pip install browserless-api",
-            "mode": "screenshot",
-        }
-
     try:
-        client = get_client()
-
-        # Prepare screenshot options
-        options = ScreenshotOptions(
-            type=image_format,
-            quality=quality if image_format != "png" else None,
-            full_page=full_page,
-        )
-
-        # Prepare launch params for stealth/ad blocking
-        launch_params = None
-        if stealth or block_ads:
-            launch_params = LaunchParams(
-                stealth=stealth,
-                block_ads=block_ads,
-                block_consent_modals=block_ads,
-                timeout=120000,
-            )
-
+        config = get_browserless_config()
+        token = config.get("token")
+        host = config["host"]
+        
+        # Build API URL
+        api_url = f"{host}/screenshot"
+        if token:
+            api_url += f"?token={token}"
+        
+        # Prepare payload
+        payload = {
+            "url": url,
+            "options": {
+                "type": image_format,
+                "fullPage": full_page,
+            },
+            "waitForTimeout": wait_for,
+        }
+        
+        # Add quality for JPEG/WebP
+        if image_format in ("jpeg", "webp"):
+            payload["options"]["quality"] = quality
+        
+        # Add stealth and ad blocking
+        if stealth:
+            payload["stealth"] = True
+        if block_ads:
+            payload["blockAds"] = True
+            payload["blockConsentModals"] = True
+        
         # Generate output filename if not provided
         if not output:
             from datetime import datetime
-
             import re
 
             # Clean URL for filename
             clean_name = re.sub(r"[^a-zA-Z0-9]", "_", url)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output = f"screenshot_{clean_name}_{timestamp}.{image_format}"
-
-        # Capture screenshot
-        data = client.capture_screenshot_sync(
-            url=url,
-            options=options,
-            launch_params=launch_params,
-            save_path=output,
-        )
-
+        
+        # Ensure output directory exists
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Make API request
+        headers = {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+        }
+        
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(api_url, data=data, headers=headers, method="POST")
+        
+        with urllib.request.urlopen(req, timeout=120) as response:
+            # Read binary response
+            image_data = response.read()
+            
+            # Save to file
+            with open(output, "wb") as f:
+                f.write(image_data)
+        
         result = {
             "success": True,
             "output": output,
@@ -635,10 +609,20 @@ def screenshot_mode(
             "full_page": full_page,
         }
 
-        print(f"[SUCCESS] Screenshot saved to: {output}")
-
         return result
 
+    except urllib.error.HTTPError as e:
+        return {
+            "success": False,
+            "error": f"HTTP Error {e.code}: {e.reason}",
+            "mode": "screenshot",
+        }
+    except urllib.error.URLError as e:
+        return {
+            "success": False,
+            "error": f"URL Error: {e.reason}",
+            "mode": "screenshot",
+        }
     except Exception as e:
         return {
             "success": False,
@@ -661,6 +645,7 @@ def pdf_mode(
     margin_right=0.5,
     stealth=False,
     block_ads=False,
+    wait_for=5000,
 ):
     """
     PDF mode: Generate PDF from web page
@@ -677,64 +662,76 @@ def pdf_mode(
         margin_right: Right margin in inches
         stealth: Enable stealth mode
         block_ads: Block ads and consent modals
+        wait_for: Milliseconds to wait for page load
 
     Returns:
         dict: Result with PDF path and metadata
     """
-    print(f"[Deep Web Reader] Generating PDF: {url}")
-
-    if not BROWSERLESS_AVAILABLE:
-        return {
-            "success": False,
-            "error": "browserless-api library not found. Install with: pip install browserless-api",
-            "mode": "pdf",
-        }
-
     try:
-        client = get_client()
-
-        # Prepare PDF options
-        options = PdfOptions(
-            format=paper_format,
-            landscape=landscape,
-            print_background=print_background,
-            margin_top=margin_top,
-            margin_bottom=margin_bottom,
-            margin_left=margin_left,
-            margin_right=margin_right,
-            display_header_footer=False,
-            wait_until="networkidle0",
-        )
-
-        # Prepare launch params for stealth/ad blocking
-        launch_params = None
-        if stealth or block_ads:
-            launch_params = LaunchParams(
-                stealth=stealth,
-                block_ads=block_ads,
-                block_consent_modals=block_ads,
-                timeout=120000,
-            )
-
+        config = get_browserless_config()
+        token = config.get("token")
+        host = config["host"]
+        
+        # Build API URL
+        api_url = f"{host}/pdf"
+        if token:
+            api_url += f"?token={token}"
+        
+        # Prepare payload
+        payload = {
+            "url": url,
+            "options": {
+                "format": paper_format,
+                "landscape": landscape,
+                "printBackground": print_background,
+                "margin": {
+                    "top": f"{margin_top}in",
+                    "bottom": f"{margin_bottom}in",
+                    "left": f"{margin_left}in",
+                    "right": f"{margin_right}in",
+                },
+            },
+            "waitForTimeout": wait_for,
+        }
+        
+        # Add stealth and ad blocking
+        if stealth:
+            payload["stealth"] = True
+        if block_ads:
+            payload["blockAds"] = True
+            payload["blockConsentModals"] = True
+        
         # Generate output filename if not provided
         if not output:
             from datetime import datetime
-
             import re
 
             # Clean URL for filename
             clean_name = re.sub(r"[^a-zA-Z0-9]", "_", url)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output = f"report_{clean_name}_{timestamp}.pdf"
-
-        # Generate PDF
-        data = client.generate_pdf_sync(
-            url=url,
-            options=options,
-            launch_params=launch_params,
-            save_path=output,
-        )
-
+        
+        # Ensure output directory exists
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Make API request
+        headers = {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+        }
+        
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(api_url, data=data, headers=headers, method="POST")
+        
+        with urllib.request.urlopen(req, timeout=120) as response:
+            # Read binary response
+            pdf_data = response.read()
+            
+            # Save to file
+            with open(output, "wb") as f:
+                f.write(pdf_data)
+        
         result = {
             "success": True,
             "output": output,
@@ -744,10 +741,20 @@ def pdf_mode(
             "landscape": landscape,
         }
 
-        print(f"[SUCCESS] PDF saved to: {output}")
-
         return result
 
+    except urllib.error.HTTPError as e:
+        return {
+            "success": False,
+            "error": f"HTTP Error {e.code}: {e.reason}",
+            "mode": "pdf",
+        }
+    except urllib.error.URLError as e:
+        return {
+            "success": False,
+            "error": f"URL Error: {e.reason}",
+            "mode": "pdf",
+        }
     except Exception as e:
         return {
             "success": False,
@@ -908,28 +915,22 @@ Environment Variables:
         help="HTML tags to remove during text cleaning (default: script style nav footer noscript)",
     )
 
+    parser.add_argument(
+        "--wait-for",
+        type=int,
+        default=5000,
+        help="Milliseconds to wait for page load before capture (default: 5000)",
+    )
+
     args = parser.parse_args()
 
     # Execute based on mode
     if args.mode == "text":
         result = text_mode(
             url=args.url,
+            wait_for=args.wait_for,
             tags_to_remove=args.tags_to_remove,
         )
-
-        if result.get("success"):
-            print("\n" + "=" * 60)
-            print(f"Successfully fetched (text mode): {args.url}")
-            print(f"Original HTML size: {result.get('original_html_length', 0):,} characters")
-            print(f"Markdown size: {result.get('content_length', 0):,} characters")
-            print("=" * 60)
-            print("\nMarkdown content:\n")
-            print(result.get("markdown_text", ""))
-            sys.exit(0)
-        else:
-            print(f"\nERROR: {result.get('error')}")
-            sys.exit(1)
-
     elif args.mode == "screenshot":
         result = screenshot_mode(
             url=args.url,
@@ -939,16 +940,8 @@ Environment Variables:
             quality=args.quality,
             stealth=args.stealth,
             block_ads=args.block_ads,
+            wait_for=args.wait_for,
         )
-
-        if result.get("success"):
-            print(f"\n[COMPLETE] Screenshot mode finished successfully")
-            print(f"Output: {result.get('output')}")
-            sys.exit(0)
-        else:
-            print(f"\nERROR: {result.get('error')}")
-            sys.exit(1)
-
     elif args.mode == "pdf":
         result = pdf_mode(
             url=args.url,
@@ -962,15 +955,14 @@ Environment Variables:
             margin_right=args.margin_right,
             stealth=args.stealth,
             block_ads=args.block_ads,
+            wait_for=args.wait_for,
         )
-
-        if result.get("success"):
-            print(f"\n[COMPLETE] PDF mode finished successfully")
-            print(f"Output: {result.get('output')}")
-            sys.exit(0)
-        else:
-            print(f"\nERROR: {result.get('error')}")
-            sys.exit(1)
+    
+    # AI-Friendly JSON Output: print JSON only, single line
+    print(json.dumps(result))
+    
+    # Exit with appropriate code
+    sys.exit(0 if result.get("success") else 1)
 
 
 if __name__ == "__main__":

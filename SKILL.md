@@ -25,8 +25,12 @@ Built on the [Browserless](https://browserless.io) API, it handles modern JavaSc
 
 ### Dependencies
 
+**Zero‑dependency**: Uses only Python 3 standard libraries (`urllib`, `json`, `argparse`, etc.). No external packages needed.
+
+Ensure Python 3.8+ is installed:
+
 ```bash
-pip3 install --break-system-packages browserless-api
+python3 --version
 ```
 
 ### Environment Variables
@@ -62,6 +66,7 @@ python3 deep_web_reader.py <URL> [--mode <mode>] [options]
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `--wait‑for` | int (ms) | `5000` | Milliseconds to wait for page load before capture |
 | `--output`, `-o` | path | *auto‑generated* | Output file path |
 | `--stealth` | flag | `false` | Enable stealth mode (bypass bot detection) |
 | `--block‑ads` | flag | `false` | Block ads and consent modals |
@@ -91,10 +96,10 @@ python3 deep_web_reader.py <URL> [--mode <mode>] [options]
 
 ## 📝 Usage Examples for Agents
 
-### Example 1: Extract Clean Text
+### Example 1: Extract Clean Text (with wait time)
 
 ```bash
-python3 deep_web_reader.py https://example.com --mode text
+python3 deep_web_reader.py https://example.com --mode text --wait-for 5000
 ```
 
 **Output:** JSON with `markdown_text` field containing cleaned content.

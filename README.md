@@ -17,8 +17,12 @@ Built on the [Browserless](https://browserless.io) API, it works with modern Jav
 
 ## 📦 Installation
 
+**Zero‑dependency**: This tool uses only Python 3 standard libraries (`urllib`, `json`, `argparse`, etc.). No external packages needed.
+
+Just ensure you have Python 3.8 or newer:
+
 ```bash
-pip3 install --break-system-packages browserless-api
+python3 --version
 ```
 
 ## 🔧 Setup
@@ -66,6 +70,7 @@ python3 deep_web_reader.py https://example.com --mode pdf --pdf-format A4
 |--------|-------------|---------|
 | `URL` | Target website URL | **Required** |
 | `--mode` | Operation mode: `text`, `screenshot`, `pdf` | `text` |
+| `--wait‑for` | Milliseconds to wait for page load before capture | `5000` |
 | `--output`, `-o` | Output file path (auto‑generated if omitted) | – |
 | `--stealth` | Enable stealth mode to bypass bot detection | `false` |
 | `--block‑ads` | Block ads and consent modals | `false` |
@@ -126,7 +131,7 @@ Saves a PDF file and returns:
 
 ```bash
 # Wait 15 seconds for the page to fully render
-python3 deep_web_reader.py https://app.example.com --mode text
+python3 deep_web_reader.py https://app.example.com --mode text --wait-for 15000
 ```
 
 ### Stealth Screenshot with Ad Blocking
