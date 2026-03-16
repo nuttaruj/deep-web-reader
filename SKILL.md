@@ -1,45 +1,15 @@
----
-name: deep-web-reader
-description: "Zero-dependency web scraping tool using Browserless API for OpenClaw. Fetch and clean web content with standard Python libraries only. Created by nuttaruj."
-homepage: https://github.com/nuttaruj/deep-web-reader
-metadata: { "openclaw": { "emoji": "🌐", "requires": { "bins": ["python3"] } } }
----
-
 # Deep Web Reader Skill
 
-Zero-dependency web scraping tool using Browserless API. Created by **nuttaruj**.
+> Zero-dependency web scraping tool using Browserless API
 
-## Usage
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 
+## Description
 
-## Usage
+Fetch and clean web content from websites (including JavaScript-rendered pages) using Browserless API with no external dependencies. Perfect for agents that need web content extraction without heavy browser automation.
 
-```bash
-python3 deep_web_reader.py <URL>
-```
-
-### Options
-
-- `<URL>`: Target website URL (required)
-- `--no-clean`: Skip HTML to Markdown conversion
-- `--wait <ms>`: Wait time for page load (default: 5000ms)
-- `--timeout <ms>`: Request timeout (default: 30000ms)
-
-### Environment Variables
-
-Set these before running:
-
-```bash
-export BROWSERLESS_HOST="http://your-browserless-server:32768"
-export BROWSERLESS_TOKEN="your-api-token"
-```
-
-
-## 🎯 Purpose
-
-Fetch clean text content from websites (including JavaScript-rendered pages) using Browserless API with no external dependencies. Perfect for OpenClaw agents that need web content extraction without heavy browser automation.
-
-## 📦 Installation
+## Installation
 
 ### For OpenClaw Users
 
@@ -54,7 +24,7 @@ Fetch clean text content from websites (including JavaScript-rendered pages) usi
    openclaw skills list  # Should show "deep-web-reader"
    ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -98,15 +68,22 @@ environment:
   - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
 ```
 
-## 🚀 Usage
+## Usage
 
 ### Basic Command
 
 ```bash
 # From within the skill directory
 cd ~/.openclaw/skills/deep-web-reader
-python3 deep_web_reader.py
+python3 deep_web_reader.py <URL>
 ```
+
+### Options
+
+- `<URL>`: Target website URL (required)
+- `--no-clean`: Skip HTML to Markdown conversion
+- `--wait <ms>`: Wait time for page load (default: 5000ms)
+- `--timeout <ms>`: Request timeout (default: 30000ms)
 
 ### Programmatic Usage
 
@@ -120,7 +97,7 @@ result = deep_web_read("https://example.com", clean_html=True)
 
 if result["success"]:
     print(f"Got {result['content_length']} characters of clean text")
-    print(result["cleaned_text"][:500])  # First 500 chars
+    print(result["markdown_text"][:500])  # First 500 chars
 else:
     print(f"Error: {result.get('error')}")
 ```
@@ -146,7 +123,7 @@ result = subprocess.run(
 )
 ```
 
-## 📖 Examples
+## Examples
 
 ### Example 1: Basic Website Fetch
 
@@ -176,48 +153,7 @@ result = deep_web_read("https://example.com", clean_html=False)
 html_content = result["html"]
 ```
 
-## 🔍 Testing
-
-### Run the Built-in Test
-
-```bash
-cd ~/.openclaw/skills/deep-web-reader
-python3 deep_web_reader.py
-```
-
-Expected output:
-```
-============================================================
-Deep Web Reader - Test Block
-Testing example website
-============================================================
-
-[1] Checking environment variables...
-✓ BROWSERLESS_HOST: https://chrome.browserless.io
-✓ BROWSERLESS_TOKEN: ****************
-
-[2] Fetching from example site: https://example.com
-
-[3] SUCCESS! Content fetched and cleaned
-    Original HTML size: 15,234 characters
-    Cleaned text size: 4,567 characters
-
-[4] Sample of cleaned text (first 500 chars):
-----------------------------------------
-[Actual website text...]
-----------------------------------------
-
-[5] SUCCESS: Successfully extracted 4,567 characters of clean text
-    Content validation: ✓ Text extraction successful
-
-[6] Test completed successfully!
-    Ready for QA testing with example website by User
-============================================================
-Test block completed
-============================================================
-```
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -248,34 +184,29 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-## 📁 File Structure
+## File Structure
 
 ```
 deep-web-reader/
-├── SKILL.md                    # This file
-├── deep_web_reader.py          # Main Python script
-├── Requirement.md              # Project requirements
-├── CHANGE-SUMMARY.md           # Change history
-├── programmer/                 # Development files
-│   ├── debug_*.py              # Debug utilities
-│   └── test_*.py               # Test scripts
-├── qa/                         # Quality assurance
-└── reports/                    # Project reports
+├── README.md             # Documentation
+├── LICENSE               # MIT License
+├── SKILL.md              # OpenClaw skill metadata
+└── deep_web_reader.py    # Main Python script
 ```
 
-## 🤝 Contributing
+## Contributing
 
-Contributions welcome! This is an open-source project by **nuttaruj**.
+Contributions welcome!
 
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
 
-## 📄 License
+## License
 
-MIT License - See LICENSE file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Links
 
 - **GitHub Repository:** https://github.com/nuttaruj/deep-web-reader
 - **Browserless API:** https://browserless.io
@@ -283,5 +214,5 @@ MIT License - See LICENSE file for details.
 
 ---
 
-**Created with ❤️ by nuttaruj**  
-*Making web scraping accessible for OpenClaw agents worldwide*
+**Created with ❤️**  
+*Making web scraping accessible for everyone*
