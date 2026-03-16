@@ -15,6 +15,21 @@
 
 Built on the [Browserless](https://browserless.io) API, it works with modern JavaScript‑heavy sites without requiring a local browser.
 
+## ✨ Markdown Engine
+
+Text Mode includes a powerful **Markdown Engine** that converts HTML to clean, structured Markdown with full support for:
+
+- **Headings** (h1–h6) with proper `#` syntax
+- **Lists** (ordered and unordered) with correct indentation
+- **Links** with `[text](url)` formatting
+- **Code blocks** with triple backticks and language detection
+- **Inline code** with single backticks
+- **Bold** (`**bold**`) and *italic* (`*italic*`) text
+- **Horizontal rules** (`---`)
+- **Paragraphs**, line breaks, and divs
+
+The engine uses Python's standard `html.parser` library, ensuring zero external dependencies while maintaining high‑quality Markdown output.
+
 ## 📦 Installation
 
 **Zero‑dependency**: This tool uses only Python 3 standard libraries (`urllib`, `json`, `argparse`, etc.). No external packages needed.

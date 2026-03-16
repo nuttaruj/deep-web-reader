@@ -9,7 +9,7 @@
 
 A unified Python CLI tool that fetches web content in three distinct modes:
 
-- **Text Mode** – Extracts HTML, cleans JavaScript, and converts to clean Markdown.
+- **Text Mode** – Extracts HTML, cleans JavaScript, and converts to clean Markdown using a powerful Markdown engine that supports headings, lists, links, code blocks, bold/italic text, and more.
 - **Screenshot Mode** – Captures full‑page screenshots (PNG/JPEG/WebP) with optional stealth and ad‑blocking.
 - **PDF Mode** – Generates print‑ready PDF documents with configurable paper size, margins, and orientation.
 
@@ -20,6 +20,21 @@ Built on the [Browserless](https://browserless.io) API, it handles modern JavaSc
 - **Web content extraction** for AI agents that need clean, structured text.
 - **Visual archiving** of webpages as screenshots or PDFs.
 - **Headless browser automation** without maintaining a local Chromium instance.
+
+## ✨ Markdown Engine
+
+The Text Mode includes a powerful Markdown engine that converts HTML to clean, structured Markdown with full support for:
+
+- **Headings** (h1–h6) with proper `#` syntax
+- **Lists** (ordered and unordered) with correct indentation
+- **Links** with `[text](url)` formatting
+- **Code blocks** with triple backticks and language detection
+- **Inline code** with single backticks
+- **Bold** (`**bold**`) and *italic* (`*italic*`) text
+- **Horizontal rules** (`---`)
+- **Paragraphs**, line breaks, and divs
+
+The engine uses Python's standard `html.parser` library, ensuring zero external dependencies while maintaining high‑quality Markdown output.
 
 ## 🔧 Installation & Configuration
 
