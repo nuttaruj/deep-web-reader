@@ -1,218 +1,213 @@
 # Deep Web Reader Skill
 
-> Zero-dependency web scraping tool using Browserless API
+> Zero‑dependency 3‑mode web content extraction (Text, Screenshot, PDF) via Browserless API
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 
-## Description
+## 📋 Summary
 
-Fetch and clean web content from websites (including JavaScript-rendered pages) using Browserless API with no external dependencies. Perfect for agents that need web content extraction without heavy browser automation.
+A unified Python CLI tool that fetches web content in three distinct modes:
 
-## Installation
+- **Text Mode** – Extracts HTML, cleans JavaScript, and converts to clean Markdown.
+- **Screenshot Mode** – Captures full‑page screenshots (PNG/JPEG/WebP) with optional stealth and ad‑blocking.
+- **PDF Mode** – Generates print‑ready PDF documents with configurable paper size, margins, and orientation.
 
-### For OpenClaw Users
+Built on the [Browserless](https://browserless.io) API, it handles modern JavaScript‑heavy sites without requiring a local browser installation.
 
-1. **Clone or download the skill folder** to your OpenClaw skills directory:
-   ```bash
-   # Clone from GitHub
-   git clone https://github.com/nuttaruj/deep-web-reader.git ~/.openclaw/skills/deep-web-reader
-   ```
+## 🎯 Intended Use
 
-2. **Ensure the skill is recognized** by OpenClaw:
-   ```bash
-   openclaw skills list  # Should show "deep-web-reader"
-   ```
+- **Web content extraction** for AI agents that need clean, structured text.
+- **Visual archiving** of webpages as screenshots or PDFs.
+- **Headless browser automation** without maintaining a local Chromium instance.
 
-## Configuration
+## 🔧 Installation & Configuration
+
+### Dependencies
+
+```bash
+pip3 install --break-system-packages browserless-api
+```
 
 ### Environment Variables
 
-This tool requires **Browserless API** credentials. Set these environment variables before use:
+| Variable | Required | Purpose | Example |
+|----------|----------|---------|---------|
+| `BROWSERLESS_HOST` | ✅ | Browserless API endpoint | `https://chrome.browserless.io` |
+| `BROWSERLESS_TOKEN` | ✅ | API authentication token | `your‑api‑token‑here` |
+| `BROWSERLESS_REGION` | ❌ | API region (`SFO_US`, `LON_UK`, `AMS_NL`) | `SFO_US` |
 
-#### **BROWSERLESS_HOST**
-- **Purpose:** URL of your Browserless instance
-- **Example:** `https://chrome.browserless.io`
-- **Default value:** None (required)
-- **How to get:** Sign up at [browserless.io](https://browserless.io) for a free tier or self-host
-
-#### **BROWSERLESS_TOKEN**
-- **Purpose:** API token for authentication
-- **Example:** `your-api-token-here`
-- **Default value:** None (required)
-- **How to get:** From Browserless dashboard after registration
-
-### Setting Environment Variables
-
-#### For OpenClaw (Global)
-Add to your OpenClaw environment configuration file (`~/.openclaw/env` or similar):
+Set them before running:
 
 ```bash
 export BROWSERLESS_HOST="https://chrome.browserless.io"
-export BROWSERLESS_TOKEN="your-actual-token-here"
+export BROWSERLESS_TOKEN="your‑token"
 ```
 
-#### For Single Session (Temporary)
-```bash
-# In the terminal before running OpenClaw
-export BROWSERLESS_HOST="https://chrome.browserless.io"
-export BROWSERLESS_TOKEN="your-token"
-openclaw start
-```
+## 🛠️ CLI Parameters (for AI Agents)
 
-#### For Docker/Container Deployments
-Add to your Dockerfile or docker-compose.yml:
-```yaml
-environment:
-  - BROWSERLESS_HOST=https://chrome.browserless.io
-  - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
-```
-
-## Usage
-
-### Basic Command
+### General Syntax
 
 ```bash
-# From within the skill directory
-cd ~/.openclaw/skills/deep-web-reader
-python3 deep_web_reader.py <URL>
+python3 deep_web_reader.py <URL> [--mode <mode>] [options]
 ```
 
-### Options
+### Mode Selection
 
-- `<URL>`: Target website URL (required)
-- `--no-clean`: Skip HTML to Markdown conversion
-- `--wait <ms>`: Wait time for page load (default: 5000ms)
-- `--timeout <ms>`: Request timeout (default: 30000ms)
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `--mode` | `text`, `screenshot`, `pdf` | Operation mode (default: `text`) |
 
-### Programmatic Usage
+### Common Options
 
-Import and use in your Python scripts:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--output`, `-o` | path | *auto‑generated* | Output file path |
+| `--stealth` | flag | `false` | Enable stealth mode (bypass bot detection) |
+| `--block‑ads` | flag | `false` | Block ads and consent modals |
 
-```python
-from deep_web_reader import deep_web_read
+### Text‑Mode Specific
 
-# Fetch and clean content
-result = deep_web_read("https://example.com", clean_html=True)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--tags‑to‑remove` | space‑separated list | `script style nav footer noscript` | HTML tags to strip during cleaning |
 
-if result["success"]:
-    print(f"Got {result['content_length']} characters of clean text")
-    print(result["markdown_text"][:500])  # First 500 chars
-else:
-    print(f"Error: {result.get('error')}")
-```
+### Screenshot‑Mode Specific
 
-### OpenClaw Agent Integration
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--full‑page` / `--no‑full‑page` | flag | `true` | Capture entire page (vs. viewport) |
+| `--format` | `png`, `jpeg`, `webp` | `png` | Image format |
+| `--quality` | 0‑100 | `80` | JPEG/WebP quality |
 
-Agents can use this tool via exec:
+### PDF‑Mode Specific
 
-```python
-# In agent code
-import os
-import subprocess
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--pdf‑format` | `A4`, `Letter`, `Legal`, etc. | `A4` | Paper size |
+| `--landscape` | flag | `false` | Landscape orientation |
+| `--print‑background` | flag | `false` | Include background graphics |
+| `--margin‑top`, `--margin‑bottom`, etc. | float (inches) | `0.5` | Page margins |
 
-# Set environment variables
-os.environ["BROWSERLESS_HOST"] = "https://chrome.browserless.io"
-os.environ["BROWSERLESS_TOKEN"] = "your-token"
+## 📝 Usage Examples for Agents
 
-# Run the reader
-result = subprocess.run(
-    ["python3", "/path/to/deep_web_reader.py"],
-    capture_output=True,
-    text=True
-)
-```
+### Example 1: Extract Clean Text
 
-## Examples
-
-### Example 1: Basic Website Fetch
-
-```python
-from deep_web_reader import deep_web_read
-
-result = deep_web_read("https://news.ycombinator.com")
-if result["success"]:
-    print(f"✅ Fetched {result['content_length']} chars from Hacker News")
-```
-
-### Example 2: Longer Wait for JavaScript Sites
-
-```python
-# Some sites need more time to render
-result = deep_web_read(
-    "https://app.somejsframework.com",
-    wait_for=10000  # Wait 10 seconds
-)
-```
-
-### Example 3: Keep HTML (No Cleaning)
-
-```python
-# Get raw HTML for parsing with other tools
-result = deep_web_read("https://example.com", clean_html=False)
-html_content = result["html"]
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### "BROWSERLESS_HOST environment variable not set"
-**Solution:** Set the environment variable before running:
 ```bash
-export BROWSERLESS_HOST="https://chrome.browserless.io"
+python3 deep_web_reader.py https://example.com --mode text
 ```
 
-#### "HTTP Error 401: Unauthorized"
-**Solution:** Check your `BROWSERLESS_TOKEN` is valid and not expired.
+**Output:** JSON with `markdown_text` field containing cleaned content.
 
-#### "No HTML content found in Browserless API response"
-**Solution:** Browserless API response format may have changed. Check the script's `fetch_with_browserless` function for proper parsing.
+### Example 2: Capture Screenshot with Stealth
 
-#### Timeout Errors
-**Solution:** Increase the `wait_for` parameter (default 5000ms = 5 seconds):
-```python
-result = deep_web_read(url, wait_for=15000)  # 15 seconds
+```bash
+python3 deep_web_reader.py https://example.com \
+  --mode screenshot \
+  --stealth \
+  --block-ads \
+  --output page.png
 ```
 
-### Debug Mode
+**Output:** PNG file saved to `page.png`.
 
-Enable debug output by modifying the script or checking logs:
+### Example 3: Generate Landscape PDF
 
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+```bash
+python3 deep_web_reader.py https://docs.example.com \
+  --mode pdf \
+  --landscape \
+  --margin-top 1.0 \
+  --margin-bottom 1.0 \
+  --output doc.pdf
 ```
 
-## File Structure
+**Output:** PDF file saved to `doc.pdf`.
+
+## 🔍 Return Values
+
+### Text Mode
+
+```json
+{
+  "success": true,
+  "html": "<original HTML>",
+  "markdown_text": "# Clean Markdown\n...",
+  "content_length": 1234,
+  "original_html_length": 5678,
+  "mode": "text"
+}
+```
+
+### Screenshot Mode
+
+```json
+{
+  "success": true,
+  "output": "/path/to/screenshot.png",
+  "url": "https://example.com",
+  "mode": "screenshot",
+  "format": "png",
+  "full_page": true
+}
+```
+
+### PDF Mode
+
+```json
+{
+  "success": true,
+  "output": "/path/to/report.pdf",
+  "url": "https://example.com",
+  "mode": "pdf",
+  "format": "A4",
+  "landscape": false
+}
+```
+
+## ⚠️ Error Handling
+
+If an operation fails, the JSON will contain:
+
+```json
+{
+  "success": false,
+  "error": "Human‑readable error message",
+  "mode": "..."
+}
+```
+
+Common errors:
+
+- `BROWSERLESS_HOST environment variable not set`
+- `HTTP Error 401: Unauthorized`
+- `No HTML content found in Browserless API response`
+- Timeout errors (increase wait time or use `--stealth`)
+
+## 🧠 Integration Notes for AI Agents
+
+- **Stateless:** Each call is independent; no session persistence.
+- **Idempotent:** Repeated calls with the same parameters produce the same output (assuming the webpage hasn’t changed).
+- **Resource‑light:** No local browser needed; all rendering happens on Browserless servers.
+- **Rate‑limited:** Subject to Browserless API rate limits (check your plan).
+
+## 📁 File Structure
 
 ```
 deep-web-reader/
-├── README.md             # Documentation
+├── SKILL.md              # This file (AI‑oriented documentation)
+├── README.md             # Human‑oriented documentation
 ├── LICENSE               # MIT License
-├── SKILL.md              # OpenClaw skill metadata
 └── deep_web_reader.py    # Main Python script
 ```
 
-## Contributing
-
-Contributions welcome!
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
-## License
-
-MIT License - See [LICENSE](LICENSE) file for details.
-
-## Links
+## 🔗 References
 
 - **GitHub Repository:** https://github.com/nuttaruj/deep-web-reader
-- **Browserless API:** https://browserless.io
-- **OpenClaw Documentation:** https://docs.openclaw.dev
+- **Browserless API Docs:** https://docs.browserless.io
+- **OpenClaw Skills Guide:** https://docs.openclaw.dev/guides/skills
 
 ---
 
 **Created with ❤️**  
-*Making web scraping accessible for everyone*
+*Making web scraping accessible for AI agents*

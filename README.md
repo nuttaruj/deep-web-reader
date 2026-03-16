@@ -1,152 +1,198 @@
 # Deep Web Reader
 
-> Zero-dependency web scraping tool using Browserless API
+> Zero-dependency 3-in-1 web scraper using Browserless API (Text, Screenshot, PDF)
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 
-## Description
+## 🚀 Introduction
 
-Fetch and clean web content using Browserless API (Playwright-based browser automation).
-This tool extracts HTML from JavaScript-heavy websites and converts it to clean Markdown.
+**Deep Web Reader** is a unified CLI tool that extracts web content in three different modes:
 
-## Installation
+1. **Text Mode** – Fetches HTML, cleans JavaScript, and converts to clean Markdown.
+2. **Screenshot Mode** – Captures full‑page screenshots (PNG, JPEG, WebP) with optional stealth and ad‑blocking.
+3. **PDF Mode** – Generates print‑ready PDF documents with configurable paper size, margins, and orientation.
 
-```bash
-pip3 install --break-system-packages deep-web-reader
-```
+Built on the [Browserless](https://browserless.io) API, it works with modern JavaScript‑heavy sites without requiring a local browser.
 
-## Configuration
-
-Set environment variables before running:
+## 📦 Installation
 
 ```bash
-export BROWSERLESS_HOST="http://your-browserless-server:32768"
-export BROWSERLESS_TOKEN="your-api-token"
+pip3 install --break-system-packages browserless-api
 ```
 
-## Usage
+## 🔧 Setup
+
+Set two environment variables before running:
 
 ```bash
-# Basic usage
-python3 deep_web_reader.py https://example.com
-
-# Show help
-python3 deep_web_reader.py --help
-
-# Fetch without HTML cleaning
-python3 deep_web_reader.py https://example.com --no-clean
+export BROWSERLESS_HOST="https://chrome.browserless.io"  # or your self‑hosted instance
+export BROWSERLESS_TOKEN="your‑api‑token"
 ```
 
-## Options
+> **Note:** Get a free token at [browserless.io](https://browserless.io).
+
+## 🎯 Usage Examples
+
+### Text Mode (default)
+
+Extract clean Markdown from any webpage:
+
+```bash
+python3 deep_web_reader.py https://example.com --mode text
+```
+
+### Screenshot Mode
+
+Capture a full‑page screenshot:
+
+```bash
+python3 deep_web_reader.py https://example.com --mode screenshot --output shot.png
+```
+
+### PDF Mode
+
+Generate a PDF report (A4 format):
+
+```bash
+python3 deep_web_reader.py https://example.com --mode pdf --pdf-format A4
+```
+
+## ⚙️ Command‑Line Options
+
+### General Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `<URL>` | Target website URL | Required |
-| `--no-clean` | Skip HTML to Markdown conversion | False |
-| `--wait <ms>` | Wait time for page load | 5000ms |
-| `--timeout <ms>` | Request timeout | 30000ms |
+| `URL` | Target website URL | **Required** |
+| `--mode` | Operation mode: `text`, `screenshot`, `pdf` | `text` |
+| `--output`, `-o` | Output file path (auto‑generated if omitted) | – |
+| `--stealth` | Enable stealth mode to bypass bot detection | `false` |
+| `--block‑ads` | Block ads and consent modals | `false` |
 
-## Environment Variables
+### Text‑Mode Options
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BROWSERLESS_HOST` | ✅ | Browserless API server URL |
-| `BROWSERLESS_TOKEN` | ✅ | API authentication token |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--tags‑to‑remove` | HTML tags to strip (space‑separated) | `script style nav footer noscript` |
 
-## Output Format
+### Screenshot‑Mode Options
 
-Returns JSON with:
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--full‑page` / `--no‑full‑page` | Capture entire page vs. viewport | `true` |
+| `--format` | Image format: `png`, `jpeg`, `webp` | `png` |
+| `--quality` | JPEG/WebP quality (0–100) | `80` |
+
+### PDF‑Mode Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--pdf‑format` | Paper size: `A4`, `Letter`, `Legal`, etc. | `A4` |
+| `--landscape` | Landscape orientation | `false` |
+| `--print‑background` | Include background graphics | `false` |
+| `--margin‑top` / `--margin‑bottom` / `--margin‑left` / `--margin‑right` | Margins in inches | `0.5` |
+
+## 📄 Output Formats
+
+### Text Mode
+
+Returns a JSON object with:
 - `success`: boolean
-- `html`: original HTML content
+- `html`: original HTML
 - `markdown_text`: cleaned Markdown
-- `content_length`: number of characters
-- `error`: error message (if failed)
+- `content_length`: character count
+- `error`: error message (if any)
 
-## Examples
+### Screenshot Mode
 
-### Example 1: Basic Website Fetch
+Saves an image file and returns:
+- `success`: boolean
+- `output`: file path
+- `format`: image format
+- `full_page`: boolean
 
-```python
-from deep_web_reader import deep_web_read
+### PDF Mode
 
-result = deep_web_read("https://news.ycombinator.com")
-if result["success"]:
-    print(f"✅ Fetched {result['content_length']} chars from Hacker News")
+Saves a PDF file and returns:
+- `success`: boolean
+- `output`: file path
+- `format`: paper size
+- `landscape`: boolean
+
+## 🧪 Advanced Examples
+
+### Long Wait for JavaScript‑Heavy Sites
+
+```bash
+# Wait 15 seconds for the page to fully render
+python3 deep_web_reader.py https://app.example.com --mode text
 ```
 
-### Example 2: Longer Wait for JavaScript Sites
+### Stealth Screenshot with Ad Blocking
 
-```python
-# Some sites need more time to render
-result = deep_web_read(
-    "https://app.somejsframework.com",
-    wait_for=10000  # Wait 10 seconds
-)
+```bash
+python3 deep_web_reader.py https://news.ycombinator.com \
+  --mode screenshot \
+  --stealth \
+  --block-ads \
+  --output hn.png
 ```
 
-### Example 3: Keep HTML (No Cleaning)
+### Landscape PDF with Custom Margins
 
-```python
-# Get raw HTML for parsing with other tools
-result = deep_web_read("https://example.com", clean_html=False)
-html_content = result["html"]
+```bash
+python3 deep_web_reader.py https://docs.example.com \
+  --mode pdf \
+  --landscape \
+  --margin-top 1.0 \
+  --margin-bottom 1.0 \
+  --output documentation.pdf
 ```
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-#### "BROWSERLESS_HOST environment variable not set"
-**Solution:** Set the environment variable before running:
-```bash
-export BROWSERLESS_HOST="https://chrome.browserless.io"
-```
-
-#### "HTTP Error 401: Unauthorized"
-**Solution:** Check your `BROWSERLESS_TOKEN` is valid and not expired.
-
-#### "No HTML content found in Browserless API response"
-**Solution:** Browserless API response format may have changed. Check the script's `fetch_with_browserless` function for proper parsing.
-
-#### Timeout Errors
-**Solution:** Increase the `wait_for` parameter (default 5000ms = 5 seconds):
-```python
-result = deep_web_read(url, wait_for=15000)  # 15 seconds
-```
+| Symptom | Likely Cause | Solution |
+|---------|--------------|----------|
+| `BROWSERLESS_HOST environment variable not set` | Missing environment variable | Set `export BROWSERLESS_HOST="https://chrome.browserless.io"` |
+| `HTTP Error 401: Unauthorized` | Invalid or expired token | Regenerate token in Browserless dashboard |
+| `No HTML content found in Browserless API response` | API response format changed | Check the script’s `fetch_with_browserless` function |
+| Timeout errors | Page load too slow | Increase wait time (default 5 s) or use `--stealth` |
 
 ### Debug Mode
 
-Enable debug output by modifying the script or checking logs:
+Enable verbose logging by adding debug code:
 
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-## File Structure
+## 📁 File Structure
 
 ```
 deep-web-reader/
 ├── README.md             # This documentation
-├── LICENSE               # MIT License
 ├── SKILL.md              # OpenClaw skill metadata
+├── LICENSE               # MIT License
 └── deep_web_reader.py    # Main Python script
 ```
 
-## Contributing
+## 🤝 Contributing
 
-Contributions welcome!
+Contributions are welcome!
 
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
 
-## License
+## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License – see [LICENSE](LICENSE) for details.
 
-## Links
+## 🔗 Links
 
 - **GitHub Repository:** https://github.com/nuttaruj/deep-web-reader
 - **Browserless API:** https://browserless.io
